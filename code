@@ -1,0 +1,445 @@
+#Libraries
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import statsmodels.formula.api as smf
+%matplotlib inline
+import os
+from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_curve
+from sklearn.metrics import classification_report
+from sklearn.metrics import confusion_matrix
+from sklearn.linear_model import LogisticRegression
+from sklearn import metrics
+from sklearn.model_selection import train_test_split
+import statsmodels.api as sm
+from sklearn.svm import SVR
+from sklearn.feature_selection import RFE
+from multipy.data import neuhaus
+from multipy.fwer import sidak
+from scipy.stats import rankdata
+from sklearn import metrics
+import joblib
+from sklearn import preprocessing
+from sklearn.preprocessing import StandardScaler,OneHotEncoder
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.preprocessing import PolynomialFeatures
+#Question 1
+
+#Use the data_interactions_1.csv to create linear regression models with and without interactions between the features 
+#to regress the ‘sales’. 
+#Explain the differences (if any) in the models and state possible reasons for the same
+salesdata=pd.read_csv(r'.csv')
+salesdata.head()
+
+
+
+Notes:
+[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+The initial model is the one without interactions. The overall fit of the model is good with a significant f stats. The adjusted R squared is 0.896 that means just approximately 10% of the variation in sales is unexplained.All variables except newspapers found statistically significant.The intercept is also found significant.
+
+## Trying the same model with interactions
+
+model_interaction = smf.ols(formula='sales ~ youtube + facebook + newspaper + youtube:facebook + facebook:newspaper + newspaper:youtube ', data=salesdata).fit()
+summary2 = model_interaction.summary()
+summary2
+
+
+
+Notes:
+[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+[2] The condition number is large, 5.47e+04. This might indicate that there are
+strong multicollinearity or other numerical problems.
+When interactions are added, the overall F stats and adjusted R squared have significantly improved.An adjusted R squared of 96.9% means less than 4% of the variations are unexplained. Also in the initial model, the newspaper was insignificant at 5% SL but the interaction between newspaper and youtube looks statistically significant at 5% SL.So the variable newspaper is significant in the new model.
+
+def fdr(pvals):
+    pvals = np.array(pvals)
+    k = rankdata(pvals)
+    N = len(pvals)
+    q = (0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1)
+    chart = []
+    for i in q:
+        alpha = max(pvals[pvals <= (i*k/N)])
+        chart.append(alpha)
+    plt.plot(q,chart,'o-')
+    plt.xlabel("q values")
+    plt.ylabel("p-values")
+    plt.show()
+    print('Number of variables:',N)
+    return chart
+from scipy.stats import rankdata
+pvals=model1.summary2().tables[1]['P>|t|']
+fdr(pvals)
+
+So for a q=0.1, the fdr is 1.2673e-17. So from the first model without interaction there are no false positives which were corrected by FDR control.
+
+pvals=model_interaction.summary2().tables[1]['P>|t|']
+fdr(pvals)
+
+
+
+
+
+#data load
+data=pd.read_csv(r'C')
+
+#EDA on the data 
+
+#checking what the data consists of
+data.head()
+#data description
+data.describe()
+#data features
+data.shape
+(398, 9)
+#Number of values that are null
+sum(data.horsepower=='?')
+data=data[data.horsepower!='?']
+
+#Horsepower is an object and not of the float data type
+#data type conversion
+data.horsepower=data.horsepower.astype('int64')
+#new updated data description
+data.describe()
+
+#number of cars
+data['car name'].value_counts()
+#null value handling
+data['car name'].fillna('dddddd')
+#transform data
+data['car name']=[i[0] for i in data['car name'].str.split(' ')]
+#unique car company values
+data['car name'].unique()
+
+
+len(data['car name'])
+392
+#data information
+data.info()
+<class 'pandas.core.frame.DataFrame'>
+Int64Index: 392 entries, 0 to 397
+Data columns (total 9 columns):
+
+dtypes: float64(3), int64(5), object(1)
+memory usage: 30.6+ KB
+#histogram for the miles per gallon
+
+
+#heatmap of the data
+
+plt.figure(figsize=(10,6))
+sns.heatmap(data.corr(),cmap=plt.cm.Reds,annot=True)
+plt.title('Heatmap displaying the association among all the variables in the data',
+         fontsize=13)
+plt.show()
+
+#EDA ends variable removal and transformation begins
+#variable removals and transformations
+#removing irrelevant 'car name' column
+data=pd.read_csv(r'C:\Users\swati\Downloads\data_interactions_2.csv')
+data.drop('car name',axis=1,inplace=True)
+#converting all columns to numeric
+for col in data.columns:
+    data[col] = pd.to_numeric(data[col], errors ='coerce')
+    
+#replacing missing values in horsepower with its median
+horse_med = data['horsepower'].median()
+data['horsepower'] = data['horsepower'].fillna(horse_med)
+from statsmodels.regression import linear_model
+X = data.drop('mpg', axis=1)
+y = data['mpg']
+model = linear_model.OLS(y, X).fit()
+model.summary()
+OLS Regression Results
+
+
+
+Notes:
+[1] R² is computed without centering (uncentered) since the model does not contain a constant.
+[2] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+[3] The condition number is large, 5.98e+03. This might indicate that there are
+strong multicollinearity or other numerical problems.
+#p values of the linear regression model 
+p_values_mpg_lin=model.pvalues[model.pvalues < 0.05]
+
+fdr(p_values_mpg_lin)
+
+
+pvals = p_values_mpg_lin
+significant_pvals_q2_1 = sidak(pvals, alpha=0.05)
+print(['{:.4f}'.format(p) for p in pvals], significant_pvals_q2_1)
+
+print("The FDR control is not necessary as all the p values are below 0.05 and are significant.FDR threshold is 0.0439. ")
+The FDR control is not necessary as all the p values are below 0.05 and are significant.FDR threshold is 0.0439. 
+print("From the summary we can note that except 'acceleration', all other features have p-values less than alpha=0.05 \nHence these are  statistically significant. R squared is 98.1 percent \nAcceleration may have an effect when combined with other features on the prediction of mpg.There can be some other \ninteraction terms that may be significant.Whether acceleration has an effect when the other dependent variables change is evaluated \nthrough the polynomial linear regression.")
+
+#Create a comprehensive set of interaction terms
+
+#generating interaction terms
+x_interaction = PolynomialFeatures(2, interaction_only=True, include_bias=False).fit_transform(X)
+#creating a new dataframe with the interaction terms included
+interaction_df = pd.DataFrame(x_interaction, columns = ['cylinders','displacement','horsepower','weight','acceleration','year','origin',
+                                                       'cylinders:displacement','cylinders:horsepower','cylinders:weight','cylinders:acceleration',
+                                                       'cylinders:year','cylinders:origin','displacement:horsepower','displacement:weight',
+                                                       'displacement:acceleration','displacement:year','displacement:origin','horsepower:weight',
+                                                       'horsepower:acceleration','horsepower:year','horsepower:origin','weight:acceleration',
+                                                       'weight:year','weight:origin','acceleration:year','acceleration:origin','year:origin'])
+From the summary we can note that except 'acceleration', all other features have p-values less than alpha=0.05 
+Hence these are  statistically significant. R squared is 98.1 percent 
+Acceleration may have an effect when combined with other features on the prediction of mpg.There can be some other 
+interaction terms that may be significant.Whether acceleration has an effect when the other dependent variables change is evaluated 
+through the polynomial linear regression.
+#To verify the model fit with the new interaction terms in place
+interaction_model = linear_model.OLS(y, interaction_df).fit()
+interaction_model.summary()
+#R squared is, higher than in the previous model,at 98.8%, as all the interaction have been considered 
+OLS Regression Results
+Dep. Variable:	mpg	R-squared (uncentered):	0.989
+Model:	OLS	Adj. R-squared (uncentered):	0.988
+Method:	Least Squares	F-statistic:	1185.
+Date:	Fri, 21 Jan 2022	Prob (F-statistic):	0.00
+Time:	23:51:16	Log-Likelihood:	-945.36
+No. Observations:	398	AIC:	1947.
+Df Residuals:	370	BIC:	2058.
+Df Model:	28		
+Covariance Type:	nonrobust		
+
+
+
+Notes:
+[1] R² is computed without centering (uncentered) since the model does not contain a constant.
+[2] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+[3] The condition number is large, 5.67e+07. This might indicate that there are
+strong multicollinearity or other numerical problems.
+#To evaluate the significant terms/features
+
+p_values_mpg=interaction_model.pvalues[interaction_model.pvalues < 0.05]
+p_values_mpg
+
+dtype: float64
+print("There is presence of interaction terms\nAcceleration coupled with horsepower and year has an impact in the prediction of mpg\nThe p-value of acceleration is significant but it is already accounted for in the interaction terms.\nTherefore in this model,we need to consider the main effects of the acceleration even though its not statistically significant")
+There is presence of interaction terms
+Acceleration coupled with horsepower and year has an impact in the prediction of mpg
+The p-value of acceleration is significant but it is already accounted for in the interaction terms.
+Therefore in this model,we need to consider the main effects of the acceleration even though its not statistically significant
+fdr(p_values_mpg)
+
+
+pvals = p_values_mpg
+significant_pvals_q2 = sidak(pvals, alpha=0.05)
+print(['{:.4f}'.format(p) for p in pvals], significant_pvals_q2)
+
+print("Controlling for a false discovery rate at q=0.1 and so on we get the value to be 0.04 approx as can be seen from the graph\nIt doesn't have an effect on the model.At a significance of 0.05 the FDR threshold is 0.039 and the p values for the model are below it.\nHowever if it were to have p values that are different approx 3.9% of the p values which were significant could be false positives.")
+Controlling for a false discovery rate at q=0.1 and so on we get the value to be 0.04 approx as can be seen from the graph
+It doesn't have an effect on the model.At a significance of 0.05 the FDR threshold is 0.039 and the p values for the model are below it.
+However if it were to have p values that are different approx 3.9% of the p values which were significant could be false positives.
+
+#Create a Logistic Regression model on the diabetes data set to identify if a patient has diabetes
+#(‘Outcome’ column in the data set).
+
+#read the data
+data2 = pd.read_csv(r'C:\Users\swati\Downloads\diabetes.csv')
+
+#check the data 
+data2.head()
+
+# characterstics of the data 
+data2.info()
+
+#data description
+data2.describe()
+
+sns.countplot(x='Outcome',data=data2)
+<AxesSubplot:xlabel='Outcome', ylabel='count'>
+
+#Age distribution 
+sns.distplot(data2['Age'].dropna(),kde=True)
+
+#correlation between all the factors
+data2.corr()
+
+#Pairplot of all the factors
+sns.pairplot(data2)
+<seaborn.axisgrid.PairGrid at 0x261dcf8b460>
+
+#Plot for relationship between Age and BMI
+plt.subplots(figsize=(20,15))
+sns.boxplot(x='Age', y='BMI', data=data2)
+<AxesSubplot:xlabel='Age', ylabel='BMI'>
+
+data_train = data2[:652]
+data_test = data2[652:750]
+data_check=data2[750:]
+train_lbl = np.asarray(data_train['Outcome'])
+train_data= np.asarray(data_train.drop('Outcome',1))
+test_lbl = np.asarray(data_test['Outcome'])
+test_data = np.asarray(data_test.drop('Outcome',1))
+mean = np.mean(train_data, axis=0)
+stdev = np.std(train_data, axis=0)
+train_data = (train_data - mean)/stdev
+test_data = (test_data - mean)/stdev
+#Regression
+diabetes_pred_logmodel = LogisticRegression()
+model=diabetes_pred_logmodel.fit(train_data, train_lbl)
+accuracy = diabetes_pred_logmodel.score(test_data, test_lbl)
+print("accuracy = ", accuracy * 100, "%")
+coeff = list(diabetes_pred_logmodel.coef_[0])
+labels = list(train_data)
+
+
+coeff = list(diabetes_pred_logmodel.coef_[0])
+print(coeff)
+
+joblib.dump([diabetes_pred_logmodel, mean, stdev], 'diabetes_model.pkl')
+
+diabetes_model_load, mean, stdev = joblib.load('diabetes_model.pkl')
+model_accuracy = diabetes_model_load.score(test_data, test_lbl)
+print("accuracy = ",model_accuracy * 100,"%")
+
+#Prediction
+sample = data_check[:1]
+# prepare sample
+sample_features = np.asarray(sample.drop('Outcome',1))
+sample_features = (sample_features - mean)/stdev
+# predict
+prediction_probability = diabetes_model_load.predict_proba(sample_features)
+prediction = diabetes_model_load.predict(sample_features)
+print('Probability:', prediction_probability)
+print('prediction:', prediction)
+
+
+#Verification
+#consider all the variables for the y axis except for the dependent
+x = data2.drop('Outcome',axis=1)
+#y consists of all the other variables
+y = data2['Outcome']
+
+#splitting data into test and train
+x_train,x_test,y_train,y_test = train_test_split(x,y,test_size=0.3,random_state=101)
+from sklearn.linear_model import LogisticRegression
+#Logistic regression
+logmodel = LogisticRegression()
+
+#log model
+logmodel.fit(x_train,y_train)
+#predictions from the log model
+predictions = logmodel.predict(x_test)
+from sklearn.metrics import classification_report
+#report summarizing the scores and metrics
+print(classification_report(y_test,predictions))
+
+  n_iter_i = _check_optimize_result(
+#confusion matrix
+c_matrix=confusion_matrix(y_test,predictions)
+print(c_matrix)
+[[133  17]
+ [ 31  50]]
+y_pred_proba = logmodel.predict_proba(x_test)[::,1]
+fpr, tpr, _ = metrics.roc_curve(y_test,  y_pred_proba)
+auc = metrics.roc_auc_score(y_test, y_pred_proba)
+plt.plot(fpr,tpr,label="data 1, auc="+str(auc))
+plt.legend(loc=4)
+plt.plot([0, 1], [0, 1],'r--')
+plt.xlim([0.0, 1.0])
+plt.ylim([0.0, 1.05])
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('Receiver operating characteristic')
+plt.legend(loc="lower right")
+plt.savefig('Log_ROC')
+plt.show()
+
+x_diab = data2.drop('Outcome',axis=1)
+y_diab = data2['Outcome']
+logit_model=sm.Logit(y,sm.add_constant(x_diab))
+logitmodel=logit_model.fit()
+print(logitmodel.summary2())
+p_values_diabetes=logitmodel.summary2().tables[1]['P>|z|']
+Optimization terminated successfully.
+         Current function value: 0.470993
+
+fdr(p_values_diabetes)
+
+pvals = p_values_diabetes
+significant_pvals_q3 = sidak(pvals, alpha=0.05)
+print(['{:.4f}'.format(p) for p in pvals], significant_pvals_q3)
+
+print("FDR threshold is 0.18 that means at an alpha of 0.05 and q of 0.1 there are false discoveries that were controlled.The number of false discoveries\nas can be seen from the above model's p value suggests that FDR control is not required to discover false positives.")
+FDR threshold is 0.18 that means at an alpha of 0.05 and q of 0.1 there are false discoveries that were controlled.The number of false discoveries
+as can be seen from the above model's p value suggests that FDR control is not required to discover false positives.
+
+df = pd.read_csv(r'C:\Users\swati\Downloads\diabetes.csv')
+df.head()
+
+
+x = df.drop('Outcome',axis=1)
+y = df['Outcome']
+logit_model1=sm.Logit(y,sm.add_constant(x))
+result=logit_model1.fit()
+Optimization terminated successfully.
+         Current function value: 0.470993
+         Iterations 6
+print(result.summary2())
+
+
+estimator = SVR(kernel="linear")
+selector = RFE(estimator, n_features_to_select=5, step=1)
+selector = selector.fit(x, y)
+selector.support_
+array([ True,  True,  True, False, False,  True,  True, False])
+selector.ranking_
+array([1, 1, 1, 3, 4, 1, 1, 2])
+cols = ['Pregnancies','Glucose','BloodPressure','BMI','DiabetesPedigreeFunction']
+x2=df[cols]
+y2=df['Outcome']
+logit_model2=sm.Logit(y2,sm.add_constant(x2))
+result2=logit_model2.fit()
+print(result2.summary2())
+
+
+x2_train, x2_test, y2_train, y2_test = train_test_split(x2, y2, test_size=0.3, random_state=0)
+logit_model2 = LogisticRegression()
+logit_model2.fit(sm.add_constant(x2_train),y2_train)
+LogisticRegression()
+y2_pred = logit_model2.predict(sm.add_constant(x2_test))
+print('Accuracy of logistic regression classifier on test set: {:.2f}'.format(logit_model2.score(sm.add_constant(x2_test), y2_test)))
+Accuracy of logistic regression classifier on test set: 0.79
+confusion_matrix = confusion_matrix(y2_test, y2_pred)
+print(confusion_matrix)
+
+#Compute precision, recall, F-measure and support.
+print(classification_report(y2_test, y2_pred))
+         
+
+logit_roc_auc = roc_auc_score(y2_test, logit_model2.predict(sm.add_constant(x2_test)))
+fpr, tpr, thresholds = roc_curve(y2_test, logit_model2.predict_proba(sm.add_constant(x2_test))[:,1])
+plt.figure()
+plt.plot(fpr, tpr, label='Logistic Regression (area = %0.2f)' % logit_roc_auc)
+plt.plot([0, 1], [0, 1],'r--')
+plt.xlim([0.0, 1.0])
+plt.ylim([0.0, 1.05])
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('Receiver operating characteristic')
+plt.legend(loc="lower right")
+plt.savefig('Log_ROC')
+plt.show()
+
+# To find the FDR for the final model
+pvals=result2.summary2().tables[1]['P>|z|']
+fdr(pvals)
+
+
+
+    
+print("For the model from the regression for the miles per gallon against other car features the interaction model as well as the one without the interactions didn't require FDR correction as the BH\nadjutsted p values were significant and below the threshold,0.0439 and 0.039 respectively)")
+
+print("For the model from the logistic regression for the diabetes data FDR control was required for controlling false discoveries at the alpha=0.05 correction as some of the BH adjutsted p values were insignificant and above the threshold at 0.18 which is more than alpha=0.05.")
+For the model from the regression for the miles per gallon against other car features the interaction model as well as the one without the interactions didn't require FDR correction as the BH
+adjutsted p values were significant and below the threshold,0.0439 and 0.039 respectively)
+For the model from the logistic regression for the diabetes data FDR control was required for controlling false discoveries at the alpha=0.05 correction as some of the BH adjutsted p values were insignificant and above the threshold at 0.18 which is more than alpha=0.05.
+##End of  code
